@@ -1,0 +1,39 @@
+# game-auto 运行时配置
+
+screen:
+  authoring_width: 5120      # 作图分辨率（采集锚点图时的屏幕宽）
+  authoring_height: 2880     # 作图分辨率（采集锚点图时的屏幕高）
+
+calib:
+  anchor: images/calib/anchor.png      # 标定锚点图路径
+  anchor_authoring_topleft: [0, 0]     # 该锚点图左上角在作图分辨率下的坐标
+  coarse_scales_min: 0.40              # 标定粗扫缩放比下限
+  coarse_scales_max: 1.20              # 标定粗扫缩放比上限
+  coarse_scales_step: 0.02             # 标定粗扫步长
+  threshold: 0.80                      # 标定匹配阈值
+
+match:
+  threshold: 0.85            # 模板匹配默认阈值
+
+engine:
+  max_steps: 200             # 主循环最大步数
+  max_unknown: 5             # 连续未知态最大次数，超过则中止
+
+wait:
+  jitter: 0.5                # 等待抖动比例，0=精确
+
+mouse:
+  move_duration: 0.15
+  move_duration_jitter: 0.5
+  move_jitter: 200
+  overshoot_prob: 0.6
+  overshoot_range: 40
+
+hotkeys:
+  start: f5
+  pause: f6
+  stop: f7
+  exit: esc
+
+logging:
+  level: INFO
