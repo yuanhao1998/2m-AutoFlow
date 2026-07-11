@@ -60,6 +60,8 @@ def match_template(screen_bgr: np.ndarray, template_bgr: np.ndarray, *,
         bottom = min(screen_bgr.shape[0], region[3])
         sub = screen_bgr[top:bottom, left:right]
         off_x, off_y = left, top
+        if right <= left or bottom <= top:
+            return Match(matched=False, confidence=0.0, box=(0, 0, 0, 0), scale=1.0)
     else:
         sub = screen_bgr
         off_x, off_y = 0, 0

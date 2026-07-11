@@ -33,7 +33,8 @@ class Home(State):
 
     def handle(self, ctx):
         logger.info("在 HOME，点击打开面板")
-        ctx.click(Target.image(Anchor(ref=img.home_open_panel)))
+        if not ctx.click(Target.image(Anchor(ref=img.home_open_panel))):
+            logger.warning("未匹配到打开面板按钮，本轮将重试")
         ctx.wait(2)
         return Goto(Panel)
 
@@ -54,7 +55,8 @@ class Popup(State):
 
     def handle(self, ctx):
         logger.info("检测到弹框 → 关闭")
-        ctx.click(Target.image(Anchor(ref=img.popup_close)))
+        if not ctx.click(Target.image(Anchor(ref=img.popup_close))):
+            logger.warning("未匹配到关闭弹框按钮，本轮将重试")
         ctx.wait(1)
         return Back()
 

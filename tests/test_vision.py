@@ -53,3 +53,10 @@ def test_no_match_below_threshold():
     patch = _patch(10)  # screen 全黑，patch 半白 → 低相关
     m = match_template(screen, patch, scales=[1.0], threshold=0.9)
     assert not m.matched
+
+
+def test_degenerate_region_returns_no_match():
+    screen = np.zeros((100, 100, 3), dtype=np.uint8)
+    patch = _patch(10)
+    m = match_template(screen, patch, region=(100, 100, 50, 50), scales=[1.0], threshold=0.9)
+    assert not m.matched

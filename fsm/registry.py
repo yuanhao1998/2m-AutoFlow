@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import deque
+from collections.abc import Sequence
 
 from fsm.state import State
 
@@ -14,7 +15,7 @@ class StateRegistry:
         self._states: list[State] = []
         self._edges: dict[type[State], list[type[State]]] = {}
 
-    def register(self, state: State, transitions: list[type[State]] = ()) -> None:
+    def register(self, state: State, transitions: Sequence[type[State]] = ()) -> None:
         """注册一个 State 实例及其可达的下一界面类型。"""
         self._states.append(state)
         self._edges[type(state)] = list(transitions)

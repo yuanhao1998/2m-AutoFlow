@@ -1,4 +1,4 @@
-from fsm.state import State, Done, Stay, Goto
+from fsm.state import State, Done, Stay
 from fsm.engine import Engine
 
 

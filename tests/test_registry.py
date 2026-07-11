@@ -1,4 +1,4 @@
-from fsm.state import State, Done
+from fsm.state import State
 from fsm.registry import StateRegistry
 
 
@@ -67,3 +67,20 @@ def test_find_path_same_is_empty():
 def test_find_path_unreachable():
     reg = _reg()
     assert reg.find_path(Popup, Home) is None
+
+
+def test_find_path_transitive():
+    class A(State):
+        name = "a"
+
+    class B(State):
+        name = "b"
+
+    class C(State):
+        name = "c"
+
+    reg = StateRegistry()
+    reg.register(A(), transitions=[B])
+    reg.register(B(), transitions=[C])
+    reg.register(C())
+    assert reg.find_path(A, C) == [B, C]

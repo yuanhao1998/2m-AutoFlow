@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 
 from fsm.state import State, Done
-from fsm.context import StopFlow
 
 logger = logging.getLogger(__name__)
 
@@ -24,8 +23,8 @@ class Engine:
     def run_until(self, goal: type[State], *, max_steps: int | None = None,
                   max_unknown: int | None = None) -> bool:
         """循环直到进入 goal 界面或收到 Done。返回是否成功抵达。"""
-        max_steps = max_steps or self.max_steps
-        max_unknown = max_unknown or self.max_unknown
+        max_steps = max_steps if max_steps is not None else self.max_steps
+        max_unknown = max_unknown if max_unknown is not None else self.max_unknown
         unknown = 0
 
         for _ in range(max_steps):

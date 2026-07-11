@@ -32,12 +32,13 @@ class State:
     """一个游戏界面。signature 全部命中即判定处于此界面。"""
 
     name: str = ""
-    signature: list[Anchor] = []
+    signature: list[Anchor] | None = None
     priority: int = 0
 
     def match(self, ctx) -> bool:
         """signature 中所有锚点都命中才算处于此界面。"""
-        return all(ctx.find_anchor(a).matched for a in self.signature)
+        sig = self.signature or []
+        return all(ctx.find_anchor(a).matched for a in sig)
 
     def handle(self, ctx) -> Signal:
         """在此界面执行动作并返回信号。子类必须实现。"""

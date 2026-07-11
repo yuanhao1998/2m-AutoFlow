@@ -40,10 +40,6 @@ class CaptureAnchor:
         else:
             self.pil_image = self._placeholder_image()
 
-        # 分辨率换算配置（已移除跨分辨率换算）
-        self._rs_w = self._rs_h = 1.0
-        self._offset_x = self._offset_y = 0
-
         self.orig_w = self.pil_image.width
         self.orig_h = self.pil_image.height
         self.scale = 1.0
@@ -401,33 +397,25 @@ class CaptureAnchor:
         """生成 Python DSL 代码片段并打印到终端（屏幕坐标）。"""
         if self._saved_region:
             left, top, right, bottom = self._saved_region
-            cx = (left + right) // 2
-            cy = (top + bottom) // 2
 
             snippet = f"""
-    img = MyImages()
-    # ...
-    @step(match=img.xxx, region=({left}, {top}, {right}, {bottom}))
-    def action(self):
-        self.click({cx}, {cy})
-        self.wait(1)
+    anchor = Anchor(ref=img.xxx, region=({left}, {top}, {right}, {bottom}))
+    ctx.click(Target.image(anchor))
 """
         elif self._last_click:
             x, y = self._last_click
             snippet = f"""
-    self.click({x}, {y})
-    self.wait(1)
+    ctx.click(Target.at({x}, {y}))
 """
         else:
             self.info_var.set("请先框选区域或点击取坐标")
             return
 
         print("\n" + "=" * 50)
-        coord_type = "屏幕"
-        print(f"复制以下代码到流程文件 ({coord_type}坐标):")
+        print("复制以下代码到流程文件（屏幕坐标):")
         print("=" * 50)
         print(snippet)
-        self.info_var.set(f"已生成 {coord_type} 坐标代码片段（见终端输出）")
+        self.info_var.set("已生成屏幕坐标代码片段（见终端输出）")
 
     def run(self) -> None:
         self.root.mainloop()
