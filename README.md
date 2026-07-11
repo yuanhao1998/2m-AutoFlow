@@ -4,15 +4,20 @@
 
 设计文档见 `docs/superpowers/specs/`，实现计划见 `docs/superpowers/plans/`。
 
-## 环境（务必用虚拟环境，勿装进系统 Python）
+## 环境（推荐 uv，勿装进系统 Python）
+
+依赖以 `pyproject.toml` 为准，`uv.lock` 锁定精确版本。
+
+    uv sync                 # 按 uv.lock 创建 .venv 并安装依赖（含 dev 的 pytest）
+    uv run run.py           # 运行入口（按 F5 开始）
+    uv run pytest           # 跑测试
+    uv run tools/capture_anchor.py   # 采集锚点图
+    uv run tools/whereami.py         # 界面探针
+
+生产环境可 `uv sync --no-dev` 排除 pytest。
+
+### 不用 uv 时（pip 回退）
     python3 -m venv .venv
     .venv/bin/python -m pip install -r requirements.txt
-
-## 运行
     .venv/bin/python run.py
-
-## 测试
     .venv/bin/python -m pytest
-
-> 提示：可先 `source .venv/bin/activate` 后直接用 `python`/`pytest`。
-> 采集锚点图与界面探针同理：`.venv/bin/python tools/capture_anchor.py`、`.venv/bin/python tools/whereami.py`。
