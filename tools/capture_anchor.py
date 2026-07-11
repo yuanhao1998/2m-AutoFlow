@@ -40,10 +40,9 @@ class CaptureAnchor:
         else:
             self.pil_image = self._placeholder_image()
 
-        # 分辨率换算配置（已移除跨分辨率换算，保留属性作为占位）
+        # 分辨率换算配置（已移除跨分辨率换算）
         self._rs_w = self._rs_h = 1.0
         self._offset_x = self._offset_y = 0
-        self._show_5k = False
 
         self.orig_w = self.pil_image.width
         self.orig_h = self.pil_image.height
@@ -259,9 +258,6 @@ class CaptureAnchor:
         cy = self.canvas.canvasy(event.y)
         ox, oy = self._to_orig(cx, cy)
         info = f"屏幕: ({ox}, {oy})"
-        if self._show_5k:
-            kx, ky = self._to_5k(ox, oy)
-            info += f"  →  5K: ({kx}, {ky})"
         info += "  — 悬停查看 | 拖拽框选 | F5截屏"
         self.info_var.set(info)
 
@@ -295,9 +291,6 @@ class CaptureAnchor:
             self._last_click = (self.start_x, self.start_y)
             self._draw_point(self.start_x, self.start_y)
             info = f"点击 屏幕: ({self.start_x}, {self.start_y})"
-            if self._show_5k:
-                kx, ky = self._to_5k(self.start_x, self.start_y)
-                info += f"  →  5K: ({kx}, {ky})"
             info += " — 按 T 复制坐标，按 Space 生成代码"
             self.info_var.set(info)
             self._saved_region = None
@@ -305,10 +298,6 @@ class CaptureAnchor:
             self._saved_region = (left, top, right, bottom)
             self._last_click = None
             info = f"区域 屏幕: ({left}, {top}, {right}, {bottom}) {right-left}×{bottom-top}"
-            if self._show_5k:
-                kl, kt = self._to_5k(left, top)
-                kr, kb = self._to_5k(right, bottom)
-                info += f"  →  5K: ({kl}, {kt}, {kr}, {kb})"
             info += " — R保存参考图 C复制坐标"
             self.info_var.set(info)
 
@@ -347,9 +336,6 @@ class CaptureAnchor:
             self.info_var.set("请先拖拽框选区域")
             return
         left, top, right, bottom = self._saved_region
-        if self._show_5k:
-            left, top = self._to_5k(left, top)
-            right, bottom = self._to_5k(right, bottom)
         text = f"({left}, {top}, {right}, {bottom})"
         self.root.clipboard_clear()
         self.root.clipboard_append(text)
@@ -360,8 +346,6 @@ class CaptureAnchor:
             self.info_var.set("请先点击取坐标")
             return
         x, y = self._last_click
-        if self._show_5k:
-            x, y = self._to_5k(x, y)
         text = f"({x}, {y})"
         self.root.clipboard_clear()
         self.root.clipboard_append(text)
@@ -414,12 +398,9 @@ class CaptureAnchor:
         self.canvas.yview_moveto(max(0, (cy - canvas_h / 2) / self.scaled_h))
 
     def _gen_action(self) -> None:
-        """生成 Python DSL 代码片段并打印到终端（自动换算为 5K 坐标）。"""
+        """生成 Python DSL 代码片段并打印到终端（屏幕坐标）。"""
         if self._saved_region:
             left, top, right, bottom = self._saved_region
-            if self._show_5k:
-                left, top = self._to_5k(left, top)
-                right, bottom = self._to_5k(right, bottom)
             cx = (left + right) // 2
             cy = (top + bottom) // 2
 
@@ -433,8 +414,6 @@ class CaptureAnchor:
 """
         elif self._last_click:
             x, y = self._last_click
-            if self._show_5k:
-                x, y = self._to_5k(x, y)
             snippet = f"""
     self.click({x}, {y})
     self.wait(1)
@@ -444,7 +423,7 @@ class CaptureAnchor:
             return
 
         print("\n" + "=" * 50)
-        coord_type = "5K" if self._show_5k else "屏幕"
+        coord_type = "屏幕"
         print(f"复制以下代码到流程文件 ({coord_type}坐标):")
         print("=" * 50)
         print(snippet)
