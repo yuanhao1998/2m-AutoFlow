@@ -322,10 +322,18 @@ class CaptureAnchor:
             left, top, right, bottom = self._saved_region
             crop = self.pil_image.crop((left, top, right, bottom))
             crop.save(path)
-            self.info_var.set(f"已保存裁剪图: {path} ({right-left}x{bottom-top})")
+            # 同步追加到 regions.yaml
+            from anchors.anchors import _append_region
+            try:
+                _append_region(path, (left, top, right, bottom))
+                self.info_var.set(
+                    f"已保存: {path} ({right-left}x{bottom-top})，region 已写入 regions.yaml")
+            except Exception as e:
+                self.info_var.set(f"已保存裁剪图: {path}，region 写入失败: {e}")
         else:
             self.pil_image.save(path)
-            self.info_var.set(f"已保存全屏截图: {path} ({self.pil_image.width}x{self.pil_image.height})")
+            self.info_var.set(
+                f"已保存全屏截图: {path} ({self.pil_image.width}x{self.pil_image.height})")
 
     def _copy_region(self) -> None:
         if not self._saved_region:
