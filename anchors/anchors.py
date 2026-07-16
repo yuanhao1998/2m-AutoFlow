@@ -130,16 +130,20 @@ def _append_region(save_path: Path, region: tuple[int, int, int, int]) -> None:
 
 @dataclass(frozen=True)
 class Anchor:
-    """匹配锚点：参考图 + 作图坐标搜索区域 + 阈值。
+    """匹配锚点：图像模板匹配 或 OCR 文字定位。
+
+    图像模式（默认）：ref 指向参考图，通过 cv2.matchTemplate 匹配。
+    文字模式：设置 text 为非空字符串，通过 EasyOCR 在 region 内定位文字。
 
     region 未显式传入时自动从 ref.region（regions.yaml）继承。
     显式传 region 则覆盖 yaml 值。两者均为 None = 全屏搜索。
     """
 
-    ref: ImageRef
+    ref: ImageRef | None = None
     region: tuple[int, int, int, int] | None = None
     threshold: float = 0.85
+    text: str | None = None
 
     def __post_init__(self) -> None:
-        if self.region is None:
+        if self.ref is not None and self.region is None:
             object.__setattr__(self, "region", self.ref.region)

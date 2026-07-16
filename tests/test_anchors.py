@@ -106,6 +106,24 @@ def test_anchor_defaults_and_frozen(tmp_path):
     assert b.region == (1, 2, 3, 4)
 
 
+# ---- 文字锚点 ----
+
+def test_text_anchor_no_ref():
+    a = Anchor(text="확인", region=(100, 200, 300, 400))
+    assert a.text == "확인"
+    assert a.ref is None
+    assert a.region == (100, 200, 300, 400)
+    assert a.threshold == 0.85
+
+
+def test_text_anchor_frozen_and_hashable():
+    a = Anchor(text="확인")
+    b = Anchor(text="확인")
+    assert hash(a) == hash(b)
+    assert a.ref is None
+    assert a.region is None
+
+
 # ---- _append_region ----
 
 def test_append_region_creates_yaml(tmp_path):

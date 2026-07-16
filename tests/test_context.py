@@ -40,6 +40,47 @@ def test_find_anchor_scales_region_and_uses_calibrated_scale():
     assert seen["threshold"] == 0.7
 
 
+def test_find_anchor_dispatches_to_text_match():
+    """当 anchor.text 非空时走 OCR 路径而非模板匹配。"""
+    called = {}
+
+    def fake_match_text(anchor):
+        called["text"] = anchor.text
+        called["region"] = anchor.region
+        return Match(True, 0.99, (100, 200, 130, 220), 1.0)
+
+    ctx = Ctx(FakeCal(), RunState(),
+              capture=lambda: np.zeros((100, 100, 3), dtype=np.uint8))
+    ctx.screen_bgr = np.zeros((200, 200, 3), dtype=np.uint8)
+    ctx._match_text = fake_match_text
+
+    a = Anchor(text="확인", region=(10, 20, 50, 60))
+    m = ctx.find_anchor(a)
+    assert m.matched is True
+    assert m.confidence == 0.99
+    assert called["text"] == "확인"
+    assert called["region"] == (10, 20, 50, 60)
+
+
+def test_find_anchor_still_uses_image_when_text_is_none():
+    """text 为 None 时仍走图像模板匹配路径。"""
+    seen = {}
+
+    def fake_matcher(screen, template, *, region=None, threshold=0.85, scales=None):
+        seen["path"] = "image"
+        return Match(True, 0.88, (0, 0, 2, 2), 0.5)
+
+    ctx = Ctx(FakeCal(), RunState(),
+              capture=lambda: np.zeros((50, 50, 3), dtype=np.uint8))
+    ctx.screen_bgr = np.zeros((50, 50, 3), dtype=np.uint8)
+    ctx._matcher = fake_matcher
+    ctx._loader = lambda p: np.zeros((4, 4, 3), dtype=np.uint8)
+
+    m = ctx.find_anchor(Anchor(ref=ImageRef("x.png")))
+    assert m.matched is True
+    assert seen["path"] == "image"
+
+
 def test_click_returns_false_when_unresolved():
     clicked = []
     ctx = Ctx(FakeCal(), RunState(), clicker=lambda x, y: clicked.append((x, y)))

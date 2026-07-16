@@ -61,13 +61,51 @@ class Ctx:
         return self._cache[key]
 
     def find_anchor(self, anchor: Anchor) -> Match:
-        """在当前截图中匹配锚点。region 为作图坐标，自动换算到屏幕。"""
+        """在当前截图中匹配锚点（图像模板匹配或 OCR 文字定位）。"""
+        if anchor.text is not None:
+            return self._match_text(anchor)
+        return self._match_image(anchor)
+
+    def _match_image(self, anchor: Anchor) -> Match:
+        """cv2.matchTemplate 模板匹配。"""
         region = None
         if anchor.region is not None:
             region = self.calibrator.to_screen_region(anchor.region)
         return self._matcher(self.screen_bgr, self._template(anchor),
                              region=region, threshold=anchor.threshold,
                              scales=[self.calibrator.scale])
+
+    def _match_text(self, anchor: Anchor) -> Match:
+        """EasyOCR 文字定位：在 region 内搜索 anchor.text。"""
+        from core.ocr import _get_reader
+        region = None
+        off_x, off_y = 0, 0
+        if anchor.region is not None:
+            r = self.calibrator.to_screen_region(anchor.region)
+            left, top, right, bottom = r
+            left, top = max(0, left), max(0, top)
+            right = min(self.screen_bgr.shape[1], right)
+            bottom = min(self.screen_bgr.shape[0], bottom)
+            if right <= left or bottom <= top:
+                return Match(False, 0.0, (0, 0, 0, 0), 1.0)
+            sub = self.screen_bgr[top:bottom, left:right]
+            off_x, off_y = left, top
+        else:
+            sub = self.screen_bgr
+
+        reader = _get_reader()
+        results = reader.readtext(sub, detail=1)
+        query = anchor.text.replace(" ", "").lower()
+        for bbox, detected, conf in results:
+            if query in detected.replace(" ", "").lower():
+                cx = int((bbox[0][0] + bbox[2][0]) / 2) + off_x
+                cy = int((bbox[0][1] + bbox[2][1]) / 2) + off_y
+                l = int(bbox[0][0]) + off_x
+                t = int(bbox[0][1]) + off_y
+                r = int(bbox[2][0]) + off_x
+                b = int(bbox[2][1]) + off_y
+                return Match(True, float(conf), (l, t, r, b), 1.0)
+        return Match(False, 0.0, (0, 0, 0, 0), 1.0)
 
     # -- 点击 --
     def click(self, target: Target) -> bool:
