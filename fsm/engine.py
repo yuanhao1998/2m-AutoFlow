@@ -20,9 +20,15 @@ class Engine:
         self.max_unknown = max_unknown
         self._on_unknown = on_unknown or _default_on_unknown
 
-    def run_until(self, goal: type[State], *, max_steps: int | None = None,
+    def run_until(self, goal: type[State] | None = None, *,
+                  max_steps: int | None = None,
                   max_unknown: int | None = None) -> bool:
-        """循环直到进入 goal 界面或收到 Done。返回是否成功抵达。"""
+        """循环直到收到 Done 信号（或抵达 goal 界面）。返回是否成功。
+
+        goal=None 时只靠 handler 返回 Done() 终止，不绑定特定界面——
+        适合流程中途会经过相同界面多次的场景（如 Home→任务→Home→领奖→Home）。
+        goal 非空时与旧行为一致：识别到 goal 界面或收到 Done 均终止。
+        """
         max_steps = max_steps if max_steps is not None else self.max_steps
         max_unknown = max_unknown if max_unknown is not None else self.max_unknown
         unknown = 0
@@ -44,7 +50,7 @@ class Engine:
                 continue
 
             unknown = 0
-            if isinstance(state, goal):
+            if goal is not None and isinstance(state, goal):
                 logger.info("已抵达目标界面: %s", state.name or type(state).__name__)
                 return True
 
@@ -55,7 +61,7 @@ class Engine:
                 return True
             # Goto / Back / Stay / None → 下一轮重新识别
 
-        logger.error("超过最大步数 %d，未抵达目标", max_steps)
+        logger.error("超过最大步数 %d，未结束", max_steps)
         return False
 
 

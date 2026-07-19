@@ -83,3 +83,28 @@ def test_max_steps_exhausted_returns_false():
     reg = FakeRegistry([home] * 10)
     eng = Engine(reg, FakeCtx(), max_steps=3)
     assert eng.run_until(Goal) is False
+
+
+def test_goal_none_only_done_ends():
+    """goal=None 时不靠界面识别终止，只看 Done 信号。"""
+    home = Home()
+    home.handle = lambda ctx: Stay()
+    mid = Goal()  # Goal 类用来模拟"经过的其他界面"，不应触发终止
+    mid.handle = lambda ctx: Stay()
+
+    # 序列：home(Stay) → mid(Stay) → mid(Done)
+    done_state = Home()
+    done_state.handle = lambda ctx: Done()
+    reg = FakeRegistry([home, mid, done_state])
+    eng = Engine(reg, FakeCtx())
+    assert eng.run_until(goal=None) is True
+    # 验证：中途经过 Goal 类不会被误终止（因为 goal=None）
+
+
+def test_goal_none_stay_never_ends_without_done():
+    """goal=None 时如果没有 Done，最终步数耗尽返回 False。"""
+    home = Home()
+    home.handle = lambda ctx: Stay()
+    reg = FakeRegistry([home] * 10)
+    eng = Engine(reg, FakeCtx(), max_steps=4)
+    assert eng.run_until(goal=None) is False
