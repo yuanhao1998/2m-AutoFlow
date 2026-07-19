@@ -46,3 +46,30 @@ def test_base_handle_not_implemented():
     import pytest
     with pytest.raises(NotImplementedError):
         State().handle(FakeCtx({}))
+
+
+def test_log_property_auto_prepends_state_name():
+    """State.log 返回 LoggerAdapter，日志消息自动带 [StateName] 前缀。"""
+    s = State()
+    s.name = "测试界面"
+    s.flow_name = "test"
+    msg, _kw = s.log.process("点击按钮", {})
+    assert msg == "[测试界面] 点击按钮"
+
+
+def test_log_fallback_when_no_flow_name():
+    """flow_name 未设置时使用 'flow' 作为 logger 名。"""
+    s = State()
+    s.name = "anon"
+    assert s.log.logger.name == "flow"
+
+
+def test_flow_name_set_via_registry():
+    """StateRegistry.register() 自动注入 flow_name 到 State。"""
+    from fsm.registry import StateRegistry
+    s1 = State()
+    s1.name = "s1"
+    reg = StateRegistry(flow_name="my_flow")
+    reg.register(s1)
+    assert s1.flow_name == "my_flow"
+    assert s1.log.logger.name == "flow.my_flow"

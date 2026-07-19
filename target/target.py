@@ -1,7 +1,5 @@
 """点击目标抽象：锚点相对定位为主，作图坐标兜底。"""
 
-from __future__ import annotations
-
 from anchors.anchors import Anchor
 
 

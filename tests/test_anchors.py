@@ -9,22 +9,20 @@ def test_imagedir_discovers_png(tmp_path):
     Image.new("RGB", (4, 4)).save(tmp_path / "btn_ok.png")
     Image.new("RGB", (4, 4)).save(tmp_path / "btn_cancel.png")
 
-    class _Dir(ImageDir):
-        path = str(tmp_path)
+    d = ImageDir(str(tmp_path))
 
-    assert isinstance(_Dir.btn_ok, ImageRef)
-    assert _Dir.btn_ok.path.name == "btn_ok.png"
-    names = {r.path.name for r in _Dir.list_all()}
+    assert isinstance(d["btn_ok"], ImageRef)
+    assert d["btn_ok"].path.name == "btn_ok.png"
+    names = {r.path.name for r in d.list_all()}
     assert "btn_cancel.png" in names
 
 
 def test_validate_reports_missing(tmp_path):
-    class _Dir(ImageDir):
-        path = str(tmp_path)
-
     Image.new("RGB", (2, 2)).save(tmp_path / "present.png")
-    _Dir.gone = ImageRef(tmp_path / "gone.png")
-    missing = _Dir.validate()
+    d = ImageDir(str(tmp_path))
+    # 手动注入一个不存在的 ref
+    d._refs["gone"] = ImageRef(tmp_path / "gone.png")
+    missing = d.validate()
     assert str(tmp_path / "gone.png") in missing
     assert str(tmp_path / "present.png") not in missing
 

@@ -1,13 +1,33 @@
-"""参考图管理器：目录 → 属性映射；Anchor 声明匹配条件。
+"""参考图管理器：通过 img["key"] 获取 ImageRef；Anchor 声明匹配条件。
 
 region 约定：每个图片目录可含一个 regions.yaml 来集中管理搜索区域，
 ImageRef 自动从中读取，Anchor 默认继承 ref.region。显式传参则覆盖。
 
 regions.yaml 格式:
     # images/xxx/regions.yaml
-    图片名: [left, top, right, bottom]   # 作图坐标搜索区域
+    图片名: [left, top, right, bottom]   # 作图坐标搜索区域（图像锚点）
+    文字锚点key: [left, top, right, bottom]  # 文字锚点也可通过 yaml 管理区域
     全屏搜的图: null                     # null = 全屏搜索
     不必声明: 跳过                        # 等同于 null = 全屏搜索
+
+用法:
+    class MyImages(ImageDir):
+        path = "images/xxx"
+    img = MyImages()
+
+    # 图像锚点：img["key"] → ImageRef
+    Anchor(ref=img["home_sig"])
+
+    # 文字锚点：regions.yaml 中的 key 也可通过 img["key"] 获取 region
+    # regions.yaml: 确认按钮: [100, 200, 300, 400]
+    Anchor(text="확인", ref=img["确认按钮"])
+
+    # 等同于手写:
+    Anchor(text="확인", region=[100, 200, 300, 400])
+
+    # 也可直接实例化:
+    d = ImageDir("images/store")
+    d["store_icon"]
 """
 
 from __future__ import annotations
@@ -54,59 +74,77 @@ def _load_regions(directory: Path) -> dict:
         return {}
 
 
-class ImageDirMeta(type):
-    """元类：类创建时扫描 path 目录，图片文件映射为 ImageRef 属性。"""
+def _write_regions(yf: Path, data: dict) -> None:
+    """写入 regions.yaml，固定格式: key: [v1, v2, v3, v4] 或 key: null。"""
+    lines: list[str] = []
+    for k, v in data.items():
+        if v is None:
+            lines.append(f"{k}: null")
+        elif isinstance(v, list):
+            inner = ", ".join(str(x) for x in v)
+            lines.append(f"{k}: [{inner}]")
+        else:
+            lines.append(f"{k}: {v}")
+    yf.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-    def __new__(mcs, name, bases, namespace):
-        cls = super().__new__(mcs, name, bases, namespace)
-        if name == "ImageDir":
-            return cls
-        cls_path = namespace.get("path", "")
-        if cls_path:
-            cls._discover(cls_path)
-        return cls
 
-
-class ImageDir(metaclass=ImageDirMeta):
-    """声明式参考图管理器。
+class ImageDir:
+    """参考图管理器：扫描目录下所有图片和 regions.yaml，通过 img["key"] 获取 ImageRef。
 
     子类声明:
         class StoreImages(ImageDir):
             path = "images/store"
-        # StoreImages.store_icon -> ImageRef("images/store/store_icon.png")
-        # 如果 images/store/regions.yaml 里有 store_icon: [l,t,r,b]
-        # 则 StoreImages.store_icon.region 返回该坐标，否则 None
+        img = StoreImages()
+        img["store_icon"]  # → ImageRef("images/store/store_icon.png")
 
-    或直接实例化:
+    直接实例化:
         d = ImageDir("images/store")
+        d["store_icon"]
     """
 
     path: str = ""
 
     def __init__(self, path: str = "") -> None:
-        if path:
-            object.__setattr__(self, "path", path)
-            self.__class__._discover(path)
+        self._refs: dict[str, ImageRef] = {}
+        dir_path = path or self.__class__.path
+        if dir_path:
+            self._discover(dir_path)
 
-    @classmethod
-    def _discover(cls, dir_path: str) -> None:
+    def _discover(self, dir_path: str) -> None:
         base = Path(dir_path)
         if not base.is_dir():
             return
+        # 1. 图片文件 → ImageRef
         for f in sorted(base.iterdir()):
             if f.suffix.lower() in (".png", ".jpg", ".jpeg", ".bmp"):
-                attr = f.stem
-                if not hasattr(cls, attr):
-                    setattr(cls, attr, ImageRef(f))
+                self._refs[f.stem] = ImageRef(f)
+        # 2. regions.yaml 中无对应图片的 key → ImageRef（供文字锚点用）
+        regions = _load_regions(base)
+        for key in regions:
+            if key not in self._refs:
+                self._refs[key] = ImageRef(base / f"{key}.png")
 
-    @classmethod
-    def list_all(cls) -> list[ImageRef]:
-        return [v for v in vars(cls).values() if isinstance(v, ImageRef)]
+    def __getitem__(self, key: str) -> ImageRef:
+        return self._refs[key]
 
-    @classmethod
-    def validate(cls) -> list[str]:
+    def __contains__(self, key: str) -> bool:
+        return key in self._refs
+
+    def __len__(self) -> int:
+        return len(self._refs)
+
+    def __iter__(self):
+        return iter(self._refs)
+
+    def __repr__(self) -> str:
+        return f"ImageDir({len(self._refs)} refs)"
+
+    def list_all(self) -> list[ImageRef]:
+        return list(self._refs.values())
+
+    def validate(self) -> list[str]:
         missing: list[str] = []
-        for ref in cls.list_all():
+        for ref in self._refs.values():
             if not ref.path.exists():
                 missing.append(str(ref.path))
         return missing
@@ -114,18 +152,25 @@ class ImageDir(metaclass=ImageDirMeta):
 
 def _append_region(save_path: Path, region: tuple[int, int, int, int]) -> None:
     """在 save_path 所在目录的 regions.yaml 中追加一行。供 capture_anchor 调用。"""
-    from ruamel.yaml import YAML
-
-    yaml = YAML()
     yf = save_path.parent / "regions.yaml"
 
     if yf.is_file():
-        data = yaml.load(yf.read_text(encoding="utf-8")) or {}
+        data = _load_regions(save_path.parent)
     else:
         data = {}
 
     data[save_path.stem] = list(region)
-    yaml.dump(data, yf)
+    _write_regions(yf, data)
+
+
+def _append_text_region(save_dir: Path, key: str,
+                        region: tuple[int, int, int, int]) -> None:
+    """仅写入 regions.yaml，不保存图片文件（供文字锚点用）。供 capture_anchor 调用。"""
+    yf = Path(save_dir) / "regions.yaml"
+
+    data = _load_regions(Path(save_dir)) if yf.is_file() else {}
+    data[key] = list(region)
+    _write_regions(yf, data)
 
 
 @dataclass(frozen=True)

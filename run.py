@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 
 from ruamel.yaml import YAML
 
-from conf.log import add_log
+from conf.log import register_log
 from anchors.anchors import Anchor, ImageRef
 from calib.calibrator import Calibrator
 from fsm.context import Ctx, RunState
@@ -23,7 +22,7 @@ def _load_cfg() -> dict:
 
 
 def main() -> None:
-    add_log()
+    register_log()
     cfg = _load_cfg()
     c = cfg["calib"]
     anchor = Anchor(ref=ImageRef(c["anchor"]), threshold=float(c["threshold"]))

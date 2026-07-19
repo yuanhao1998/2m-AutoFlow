@@ -60,13 +60,13 @@ class Calibrator:
     def to_screen(self, x: int, y: int) -> tuple[int, int]:
         """作图坐标 → 屏幕像素。"""
         ox, oy = self.origin
-        return (round(ox + x * self.scale), round(oy + y * self.scale))
+        return round(ox + x * self.scale), round(oy + y * self.scale)
 
     def to_screen_region(self, region: tuple[int, int, int, int]) -> tuple[int, int, int, int]:
         """作图区域 → 屏幕像素区域。"""
         left, top = self.to_screen(region[0], region[1])
         right, bottom = self.to_screen(region[2], region[3])
-        return (left, top, right, bottom)
+        return left, top, right, bottom
 
     def is_valid(self) -> bool:
         return self._valid

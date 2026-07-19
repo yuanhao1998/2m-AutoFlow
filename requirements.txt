@@ -1,9 +1,0 @@
-pillow
-easyocr
-pyautogui
-pynput
-opencv-python-headless
-ruamel.yaml
-numpy
-pytest
-# 可选: pyobjc（Quartz）用于 macOS 自动化后强制显示光标；缺失时自动降级

@@ -5,9 +5,11 @@ from __future__ import annotations
 import logging
 import time
 
+import cv2
 import numpy as np
 
 from anchors.anchors import Anchor
+from calib.calibrator import Calibrator
 from core.vision import Match, match_template, load_bgr, to_bgr
 from target.target import Target
 
@@ -32,7 +34,7 @@ class Ctx:
 
     def __init__(self, calibrator, run_state: RunState, *,
                  capture=None, clicker=None, cache_templates: bool = True) -> None:
-        self.calibrator = calibrator
+        self.calibrator: Calibrator = calibrator
         self.run_state = run_state
         self.screen_bgr: np.ndarray | None = None
         self.device_name = ""
@@ -106,6 +108,49 @@ class Ctx:
                 b = int(bbox[2][1]) + off_y
                 return Match(True, float(conf), (l, t, r, b), 1.0)
         return Match(False, 0.0, (0, 0, 0, 0), 1.0)
+
+    # -- 亮度采样 --
+    def brightness(self, region: tuple[int, int, int, int]) -> float:
+        """采样指定区域的平均亮度（0=黑, 255=白），用于区分图标深浅态。
+
+        Args:
+            region: 屏幕像素区域 (left, top, right, bottom)。
+
+        Returns:
+            平均灰度值，暗→0，亮→255。
+        """
+        left, top, right, bottom = region
+        h, w = self.screen_bgr.shape[:2]
+        left = max(0, left)
+        top = max(0, top)
+        right = min(w, right)
+        bottom = min(h, bottom)
+        if right <= left or bottom <= top:
+            return 0.0
+        roi = self.screen_bgr[top:bottom, left:right]
+        gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+        return float(gray.mean())
+
+    # -- 文字提取 --
+    def read_text(self, region: tuple[int, int, int, int]) -> str:
+        """提取区域内所有文字（EasyOCR），返回空格分隔的字符串。
+
+        Args:
+            region: 屏幕像素区域 (left, top, right, bottom)。
+
+        Returns:
+            识别到的文字，空格分隔；无文字返回空字符串。
+        """
+        from core.ocr import _get_reader
+        left, top, right, bottom = region
+        h, w = self.screen_bgr.shape[:2]
+        left, top = max(0, left), max(0, top)
+        right, bottom = min(w, right), min(h, bottom)
+        if right <= left or bottom <= top:
+            return ""
+        sub = self.screen_bgr[top:bottom, left:right]
+        results = _get_reader().readtext(sub, detail=0)
+        return " ".join(results)
 
     # -- 点击 --
     def click(self, target: Target) -> bool:

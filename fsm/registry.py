@@ -11,12 +11,15 @@ from fsm.state import State
 class StateRegistry:
     """注册所有 State 并提供识别与寻路。"""
 
-    def __init__(self) -> None:
+    def __init__(self, flow_name: str = "") -> None:
+        self.flow_name = flow_name
         self._states: list[State] = []
         self._edges: dict[type[State], list[type[State]]] = {}
 
     def register(self, state: State, transitions: Sequence[type[State]] = ()) -> None:
         """注册一个 State 实例及其可达的下一界面类型。"""
+        if self.flow_name:
+            state.flow_name = self.flow_name
         self._states.append(state)
         self._edges[type(state)] = list(transitions)
 
