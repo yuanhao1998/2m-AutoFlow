@@ -4,11 +4,15 @@
 from __future__ import annotations
 
 import json
+import sys
 import urllib.request
 from datetime import date
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from anchors.anchors import ImageDir, Anchor
+from conf.env import get_env
 from fsm.state import State, Signal, Back
 from target.target import Target
 
@@ -26,9 +30,13 @@ class Death(State):
     signature = [Anchor(ref=base_img["复活按钮"])]
 
     # ---- 配置（按需修改） ----
-    WECOM_WEBHOOK: str = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=15868b74-3418-466d-86bf-0b9adc99d1e0"          # 企业微信机器人 webhook 地址
+    WECOM_WEBHOOK: str = ""          # 从 .env 读取，类属性可覆盖
     MAX_DEATH_PER_DAY: int = 5       # 单台云机每日复活上限
     # -----------------------
+
+    @classmethod
+    def _webhook(cls) -> str:
+        return cls.WECOM_WEBHOOK or get_env("WECOM_WEBHOOK")
 
     def handle(self, ctx) -> Signal:
         self.log.info("检测到死亡界面")
@@ -88,7 +96,8 @@ class Death(State):
 
     def _send_wecom_alert(self, device: str, count: int) -> None:
         """通过企业微信 webhook 发送告警。"""
-        if not self.WECOM_WEBHOOK:
+        webhook = self._webhook()
+        if not webhook:
             self.log.warning("企业微信 webhook 未配置，跳过推送")
             return
         payload = json.dumps({
@@ -99,7 +108,7 @@ class Death(State):
         }).encode("utf-8")
         try:
             req = urllib.request.Request(
-                self.WECOM_WEBHOOK,
+                webhook,
                 data=payload,
                 headers={"Content-Type": "application/json"},
             )
