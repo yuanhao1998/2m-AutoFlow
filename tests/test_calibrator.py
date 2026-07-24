@@ -66,3 +66,29 @@ def test_invalidate():
     assert c.is_valid()
     c.invalidate()
     assert not c.is_valid()
+
+
+def test_manual_mode_skips_calibration():
+    """手动模式下 is_valid() 始终为 True，calibrate() 直接返回 True。"""
+    c = Calibrator(_dummy_anchor(), (0, 0),
+                   manual_scale=1.0, manual_origin=(0, 0))
+    assert c.is_valid()
+    assert c.scale == 1.0
+    assert c.origin == (0, 0)
+    # calibrate() 不应尝试匹配
+    assert c.calibrate() is True
+
+
+def test_manual_mode_to_screen():
+    """手动模式下的坐标换算。"""
+    c = Calibrator(_dummy_anchor(), (0, 0),
+                   manual_scale=2.0, manual_origin=(100, 200))
+    assert c.to_screen(10, 20) == (120, 240)   # 100+10*2, 200+20*2
+    assert c.to_screen_region((0, 0, 50, 60)) == (100, 200, 200, 320)
+
+
+def test_manual_mode_partial_is_auto():
+    """只设 manual_scale 不设 manual_origin 时仍走自动标定。"""
+    c = Calibrator(_dummy_anchor(), (0, 0),
+                   manual_scale=1.0, manual_origin=None)
+    assert not c.is_valid()  # 未标定

@@ -7,18 +7,21 @@ screen:
 
 calib:
   anchor: images/calib/anchor.png      # 标定锚点图路径
-  anchor_authoring_topleft: [0, 0]     # 该锚点图左上角在作图分辨率下的坐标
+  anchor_authoring_topleft: [5048, 2546]     # 该锚点图左上角在作图分辨率下的坐标
   coarse_scales_min: 0.40              # 标定粗扫缩放比下限
   coarse_scales_max: 1.20              # 标定粗扫缩放比上限
   coarse_scales_step: 0.02             # 标定粗扫步长
   threshold: 0.80                      # 标定匹配阈值
+  # 手动标定（两者都非 null 时跳过自动标定，直接使用此值）
+  manual_scale: 1.0                   # 手动缩放比，如 1.0
+  manual_origin: [0, 0]               # 手动原点 [x, y]，如 [0, 0]
 
 match:
   threshold: 0.85            # 模板匹配默认阈值
 
 engine:
   max_steps: 200             # 主循环最大步数
-  max_unknown: 5             # 连续未知态最大次数，超过则中止
+  max_unknown: 20             # 连续未知态最大次数，超过则中止
 
 wait:
   jitter: 0.5                # 等待抖动比例，0=精确

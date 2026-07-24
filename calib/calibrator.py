@@ -17,14 +17,20 @@ logger = logging.getLogger(__name__)
 
 
 class Calibrator:
-    """标定器：求 scale 与 origin，并做坐标换算。"""
+    """标定器：求 scale 与 origin，并做坐标换算。
+
+    支持手动模式：传入 manual_scale 和 manual_origin（均非 None）时
+    跳过自动标定，直接使用手动值，is_valid() 始终返回 True。
+    """
 
     def __init__(self, anchor: Anchor, authoring_topleft: tuple[int, int], *,
                  coarse_scales: list[float] | None = None,
                  threshold: float = 0.80,
                  matcher: Callable = match_template,
                  loader: Callable = load_bgr,
-                 capture: Callable | None = None) -> None:
+                 capture: Callable | None = None,
+                 manual_scale: float | None = None,
+                 manual_origin: tuple[int, int] | None = None) -> None:
         self._anchor = anchor
         self._authoring_topleft = authoring_topleft
         self._coarse_scales = coarse_scales or _default_scales()
@@ -32,12 +38,24 @@ class Calibrator:
         self._matcher = matcher
         self._loader = loader
         self._capture = capture
-        self.scale: float = 1.0
-        self.origin: tuple[int, int] = (0, 0)
-        self._valid = False
+        self._manual = (manual_scale is not None and manual_origin is not None)
+        if self._manual:
+            self.scale = manual_scale
+            self.origin = manual_origin
+            self._valid = True
+            logger.info("手动标定：scale=%.4f origin=%s", self.scale, self.origin)
+        else:
+            self.scale: float = 1.0
+            self.origin: tuple[int, int] = (0, 0)
+            self._valid = False
 
     def calibrate(self, screen_bgr: np.ndarray | None = None) -> bool:
-        """匹配标定锚点，计算 scale/origin。成功返回 True。"""
+        """匹配标定锚点，计算 scale/origin。成功返回 True。
+
+        手动模式下直接返回 True，不执行匹配。
+        """
+        if self._manual:
+            return True
         if screen_bgr is None:
             screen_bgr = self._grab()
         template = self._loader(self._anchor.ref.path)

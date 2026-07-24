@@ -1,4 +1,4 @@
-"""OCR 识别模块：图像预处理 + EasyOCR 数字识别。"""
+"""OCR 识别模块：图像预处理 + EasyOCR 数字/韩文识别。"""
 
 import logging
 import re
@@ -29,12 +29,12 @@ def _get_reader() -> easyocr.Reader:
     if _reader is None:
         logger.info("正在加载 EasyOCR 模型（首次需下载，约 10-30 秒）...")
         try:
-            _reader = easyocr.Reader(["ko"], gpu=True)
-            logger.info("EasyOCR 模型加载完成（GPU 模式，韩文）")
+            _reader = easyocr.Reader(["ko", "en"], gpu=True)
+            logger.info("EasyOCR 模型加载完成（GPU 模式，韩文+英文）")
         except Exception:
             logger.warning("GPU 不可用，降级为 CPU 模式")
-            _reader = easyocr.Reader(["ko"], gpu=False)
-            logger.info("EasyOCR 模型加载完成（CPU 模式，韩文")
+            _reader = easyocr.Reader(["ko", "en"], gpu=False)
+            logger.info("EasyOCR 模型加载完成（CPU 模式，韩文+英文）")
     return _reader
 
 

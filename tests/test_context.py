@@ -95,7 +95,7 @@ def test_click_returns_false_when_unresolved():
 def test_click_uses_calibrator_for_at_target():
     clicked = []
     ctx = Ctx(FakeCal(), RunState(), clicker=lambda x, y: clicked.append((x, y)))
-    assert ctx.click(Target.at(1, 2)) is True
+    assert ctx.click(Target.at(1, 2), refresh=False) is True
     assert clicked == [(11, 22)]
 
 
@@ -105,3 +105,64 @@ def test_check_state_stop_raises():
     ctx = Ctx(FakeCal(), rs)
     with pytest.raises(StopFlow):
         ctx.check_state()
+
+
+def test_match_text_with_spaces_cross_ocr_blocks():
+    """query 含空格且 EasyOCR 逐词返回时，跨块匹配所有词。"""
+    from unittest.mock import patch, MagicMock
+
+    fake_reader = MagicMock()
+    fake_reader.readtext.return_value = [
+        ([[10, 10], [50, 10], [50, 30], [10, 30]], "잡화", 0.95),
+        ([[55, 10], [105, 10], [105, 30], [55, 30]], "상인", 0.93),
+    ]
+
+    with patch("core.ocr._get_reader", return_value=fake_reader):
+        ctx = Ctx(FakeCal(), RunState(),
+                  capture=lambda: np.zeros((200, 200, 3), dtype=np.uint8))
+        ctx.screen_bgr = np.zeros((200, 200, 3), dtype=np.uint8)
+
+        a = Anchor(text="잡화 상인", region=(0, 0, 200, 200))
+        m = ctx.find_anchor(a)
+        assert m.matched is True
+        # 包围盒应覆盖两个词
+        assert m.box[0] == 20   # left = 10(bbox) + 10(FakeCal off_x)
+        assert m.box[2] == 115  # right = 105(bbox) + 10(FakeCal off_x)
+
+
+def test_match_text_single_word_still_works():
+    """单词语 query 仍然走精确匹配路径。"""
+    from unittest.mock import patch, MagicMock
+
+    fake_reader = MagicMock()
+    fake_reader.readtext.return_value = [
+        ([[10, 10], [80, 10], [80, 30], [10, 30]], "저장", 0.97),
+    ]
+
+    with patch("core.ocr._get_reader", return_value=fake_reader):
+        ctx = Ctx(FakeCal(), RunState(),
+                  capture=lambda: np.zeros((200, 200, 3), dtype=np.uint8))
+        ctx.screen_bgr = np.zeros((200, 200, 3), dtype=np.uint8)
+
+        m = ctx.find_anchor(Anchor(text="저장", region=(0, 0, 200, 200)))
+        assert m.matched is True
+        assert m.confidence == 0.97
+
+
+def test_match_text_partial_words_not_matched():
+    """只匹配到部分词不算命中。"""
+    from unittest.mock import patch, MagicMock
+
+    fake_reader = MagicMock()
+    fake_reader.readtext.return_value = [
+        ([[10, 10], [50, 10], [50, 30], [10, 30]], "잡화", 0.95),
+        # "상인" 缺失
+    ]
+
+    with patch("core.ocr._get_reader", return_value=fake_reader):
+        ctx = Ctx(FakeCal(), RunState(),
+                  capture=lambda: np.zeros((200, 200, 3), dtype=np.uint8))
+        ctx.screen_bgr = np.zeros((200, 200, 3), dtype=np.uint8)
+
+        m = ctx.find_anchor(Anchor(text="잡화 상인", region=(0, 0, 200, 200)))
+        assert m.matched is False
